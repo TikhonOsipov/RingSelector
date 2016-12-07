@@ -96,14 +96,18 @@ public class RingSelector extends View {
             Log.d("myLogs", "x = " + x + ", y = " + y + ", radius = " + radius);
             if(radius >= radiusIn && radius <= radiusExt) {
                 float cos = (scalarProduct(x, y, x0+radius, y0))/(radius*radius);
-                //if(x < x0) cos *= -1;
-                //float sin = (float)Math.sqrt(1-cos*cos);
-                double degree = Math.toDegrees(Math.acos(cos));
+                float degree = (float)Math.toDegrees(Math.acos(cos));
                 if(y > y0) degree = 360 - degree;
-                Log.w("myLogs", "touch: X = " + event.getX() + ", Y = " + event.getY() + "; deg = " + (degree+ratio()/2)%360 + ", segment = " + (int)(((degree+ratio()/2)%360)/(ratio())));
+                Log.w("myLogs", "touch: X = "+event.getX()+", Y = "+event.getY()+
+                        "; deg = "+(degree+ratio()/2)%360+", segment = "+segmentNumber(degree));
             }
         }
         return super.onTouchEvent(event);
+    }
+
+    private int segmentNumber(float degree) {
+        float degreeWithSegmentWidthOffset = (degree + ratio()/2) % 360;
+        return (int) (degreeWithSegmentWidthOffset / ratio());
     }
 
     private float scalarProduct(float x1, float y1, float x2, float y2) {
