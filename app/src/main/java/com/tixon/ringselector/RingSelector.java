@@ -5,6 +5,8 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -21,7 +23,12 @@ public class RingSelector extends View {
     float radiusIn, radiusExt;
     float x0, y0;
 
-    private Paint segmentPaint;
+    private int pressedSegmentNumber;
+    private boolean shouldDrawSector = false;
+
+    private Paint segmentPaint, sectorPaint;
+    private Path sectorPath;
+    private RectF innerOval, externalOval;
 
     public RingSelector(Context context) {
         super(context);
@@ -45,17 +52,39 @@ public class RingSelector extends View {
     }
 
     private void init() {
+        innerOval = new RectF();
+        externalOval = new RectF();
+
         segmentPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         segmentPaint.setColor(Color.parseColor("#cacaca"));
         segmentPaint.setStyle(Paint.Style.STROKE);
         Log.d("myLogs", "segmentStrokeWidth (4dp) pixel size = " + getResources().getDimensionPixelSize(R.dimen.segment_stroke_width));
         segmentPaint.setStrokeWidth(getResources().getDimensionPixelSize(R.dimen.segment_stroke_width));
+
+        sectorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        sectorPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+
+        sectorPaint.setColor(Color.parseColor("#770000bb"));
+        //sectorPaint.setStrokeWidth(getResources().getDimensionPixelSize(R.dimen.segment_stroke_width));
+        sectorPaint.setStrokeWidth(1.0f);
+
+        sectorPath = new Path();
+        sectorPath.setFillType(Path.FillType.EVEN_ODD);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         drawSegments(canvas);
+        drawSelectedSector(canvas);
+    }
+
+    private float coordinateX(int segmentCount, float radius) {
+        return x0 + radius * (float)Math.cos(Math.toRadians((float)segmentCount*ratio()));
+    }
+
+    private float coordinateY(int segmentCount, float radius) {
+        return y0 + radius * (float)Math.sin(Math.toRadians((float)segmentCount*ratio()));
     }
 
     private void drawSegments(Canvas canvas) {
@@ -67,13 +96,14 @@ public class RingSelector extends View {
         radiusExt = (float)size/2.0f;
         radiusIn = radiusExt/1.5f;
 
-        float ratio = ratio();
+        innerOval.set(x0-radiusIn, y0-radiusIn, x0+radiusIn, y0+radiusIn);
+        externalOval.set(x0-radiusExt, y0-radiusExt, x0+radiusExt, y0+radiusExt);
 
         for(int i = 0; i < SEGMENTS_COUNT; i++) {
-            float xExt = x0 + radiusExt * (float)Math.cos(Math.toRadians((float)i*ratio));
-            float yExt = y0 + radiusExt * (float)Math.sin(Math.toRadians((float)i*ratio));
-            float xIn = x0 + radiusIn * (float)Math.cos(Math.toRadians((float)i*ratio));
-            float yIn = y0 + radiusIn * (float)Math.sin(Math.toRadians((float)i*ratio));
+            float xExt = coordinateX(i, radiusExt);
+            float yExt = coordinateY(i, radiusExt);
+            float xIn = coordinateX(i, radiusIn);
+            float yIn = coordinateY(i, radiusIn);
             canvas.drawLine(xIn, yIn, xExt, yExt, segmentPaint);
         }
     }
@@ -100,6 +130,9 @@ public class RingSelector extends View {
                 if(y > y0) degree = 360 - degree;
                 Log.w("myLogs", "touch: X = "+event.getX()+", Y = "+event.getY()+
                         "; deg = "+(degree+ratio()/2)%360+", segment = "+segmentNumber(degree));
+                pressedSegmentNumber = segmentNumber(degree);
+                shouldDrawSector = true;
+                invalidate();
             }
         }
         return super.onTouchEvent(event);
@@ -115,6 +148,18 @@ public class RingSelector extends View {
     }
 
     private void drawSelectedSector(Canvas canvas) {
+        if(!shouldDrawSector) return;
 
+        sectorPath.reset();
+        sectorPath.moveTo(coordinateX(0, radiusIn), coordinateY(0, radiusIn));
+
+        float degreeTo = (SEGMENTS_COUNT-pressedSegmentNumber)*ratio();
+
+        sectorPath.arcTo(innerOval, 0.0f, degreeTo);
+        sectorPath.lineTo(coordinateX(SEGMENTS_COUNT-pressedSegmentNumber, radiusExt), coordinateY(SEGMENTS_COUNT-pressedSegmentNumber, radiusExt));
+        sectorPath.arcTo(externalOval, degreeTo, -degreeTo);
+        sectorPath.lineTo(coordinateX(0, radiusIn), coordinateY(0, radiusIn));
+
+        canvas.drawPath(sectorPath, sectorPaint);
     }
 }
