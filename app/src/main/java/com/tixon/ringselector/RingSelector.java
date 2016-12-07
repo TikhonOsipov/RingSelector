@@ -67,7 +67,7 @@ public class RingSelector extends View {
         radiusExt = (float)size/2.0f;
         radiusIn = radiusExt/1.5f;
 
-        float ratio = 360.0f/(float)SEGMENTS_COUNT;
+        float ratio = ratio();
 
         for(int i = 0; i < SEGMENTS_COUNT; i++) {
             float xExt = x0 + radiusExt * (float)Math.cos(Math.toRadians((float)i*ratio));
@@ -76,6 +76,10 @@ public class RingSelector extends View {
             float yIn = y0 + radiusIn * (float)Math.sin(Math.toRadians((float)i*ratio));
             canvas.drawLine(xIn, yIn, xExt, yExt, segmentPaint);
         }
+    }
+
+    private float ratio() {
+        return 360.0f/(float)SEGMENTS_COUNT;
     }
 
     @Override
@@ -91,9 +95,22 @@ public class RingSelector extends View {
             float radius = (float)Math.sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0));
             Log.d("myLogs", "x = " + x + ", y = " + y + ", radius = " + radius);
             if(radius >= radiusIn && radius <= radiusExt) {
-                Log.w("myLogs", "touch: X = " + event.getX() + ", Y = " + event.getY());
+                float cos = (scalarProduct(x, y, x0+radius, y0))/(radius*radius);
+                //if(x < x0) cos *= -1;
+                //float sin = (float)Math.sqrt(1-cos*cos);
+                double degree = Math.toDegrees(Math.acos(cos));
+                if(y > y0) degree = 360 - degree;
+                Log.w("myLogs", "touch: X = " + event.getX() + ", Y = " + event.getY() + "; deg = " + (degree+ratio()/2)%360 + ", segment = " + (int)(((degree+ratio()/2)%360)/(ratio())));
             }
         }
         return super.onTouchEvent(event);
+    }
+
+    private float scalarProduct(float x1, float y1, float x2, float y2) {
+        return (x1-x0)*(x2-x0) + (y1-y0)*(y2-y0);
+    }
+
+    private void drawSelectedSector(Canvas canvas) {
+
     }
 }
