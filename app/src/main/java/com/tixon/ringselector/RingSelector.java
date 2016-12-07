@@ -135,6 +135,9 @@ public class RingSelector extends View {
                 invalidate();
             }
         }
+        if(event.getAction() == MotionEvent.ACTION_MOVE) {
+            Log.e("myLogs", "moving");
+        }
         return super.onTouchEvent(event);
     }
 
@@ -147,18 +150,36 @@ public class RingSelector extends View {
         return (x1-x0)*(x2-x0) + (y1-y0)*(y2-y0);
     }
 
+    private int numberNext(int number) {
+        return ((number+3))%60;
+    }
+
+    private int numberPrev(int number) {
+        int result = ((number-3))%60;
+        if(result < 0) result += 60;
+        return result;
+    }
+
     private void drawSelectedSector(Canvas canvas) {
         if(!shouldDrawSector) return;
 
+        int numberNext = numberNext(SEGMENTS_COUNT-pressedSegmentNumber);
+        int numberPrev = numberPrev(SEGMENTS_COUNT-pressedSegmentNumber);
+        if(Math.abs(numberNext-numberPrev)>6)
+            if(numberNext>numberPrev) numberNext = (60 - numberNext)*-1;
+            else numberPrev = (60 - numberPrev)*-1;
+        float degreeFrom = numberPrev*ratio();
+        float degreeTo = numberNext*ratio();
+        Log.e("myLogs", "prev="+numberPrev+", next="+numberNext+", from="+degreeFrom+", to="+degreeTo);
+        float degreeSweep = Math.abs(degreeTo-degreeFrom);
+
         sectorPath.reset();
-        sectorPath.moveTo(coordinateX(0, radiusIn), coordinateY(0, radiusIn));
+        sectorPath.moveTo(coordinateX(numberPrev, radiusIn), coordinateY(numberPrev, radiusIn));
 
-        float degreeTo = (SEGMENTS_COUNT-pressedSegmentNumber)*ratio();
-
-        sectorPath.arcTo(innerOval, 0.0f, degreeTo);
-        sectorPath.lineTo(coordinateX(SEGMENTS_COUNT-pressedSegmentNumber, radiusExt), coordinateY(SEGMENTS_COUNT-pressedSegmentNumber, radiusExt));
-        sectorPath.arcTo(externalOval, degreeTo, -degreeTo);
-        sectorPath.lineTo(coordinateX(0, radiusIn), coordinateY(0, radiusIn));
+        sectorPath.arcTo(innerOval, degreeFrom, degreeSweep);
+        sectorPath.lineTo(coordinateX(numberNext, radiusExt), coordinateY(numberNext, radiusExt));
+        sectorPath.arcTo(externalOval, degreeTo, -degreeSweep);
+        sectorPath.lineTo(coordinateX(numberPrev, radiusIn), coordinateY(numberPrev, radiusIn));
 
         canvas.drawPath(sectorPath, sectorPaint);
     }
