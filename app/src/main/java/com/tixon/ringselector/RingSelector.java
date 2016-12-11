@@ -93,8 +93,8 @@ public class RingSelector extends View {
         x0 = (float)width/2.0f;
         y0 = (float)height/2.0f;
         int size = width > height? height: width;
-        radiusExt = (float)size/2.0f;
-        radiusIn = radiusExt/1.5f;
+        radiusExt = (float)size/2.5f;
+        radiusIn = radiusExt/1.4f;
 
         innerOval.set(x0-radiusIn, y0-radiusIn, x0+radiusIn, y0+radiusIn);
         externalOval.set(x0-radiusExt, y0-radiusExt, x0+radiusExt, y0+radiusExt);
@@ -119,26 +119,39 @@ public class RingSelector extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if(event.getAction() == MotionEvent.ACTION_DOWN) {
-            float x = event.getX();
-            float y = event.getY();
-            float radius = (float)Math.sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0));
-            Log.d("myLogs", "x = " + x + ", y = " + y + ", radius = " + radius);
-            if(radius >= radiusIn && radius <= radiusExt) {
-                float cos = (scalarProduct(x, y, x0+radius, y0))/(radius*radius);
-                float degree = (float)Math.toDegrees(Math.acos(cos));
-                if(y > y0) degree = 360 - degree;
-                Log.w("myLogs", "touch: X = "+event.getX()+", Y = "+event.getY()+
-                        "; deg = "+(degree+ratio()/2)%360+", segment = "+segmentNumber(degree));
-                pressedSegmentNumber = segmentNumber(degree);
-                shouldDrawSector = true;
-                invalidate();
-            }
+        final int action = event.getAction();
+        float x, y, radius;
+        switch(action & event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                x = event.getX();
+                y = event.getY();
+                radius = (float)Math.sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0));
+                Log.d("myLogs", "x = " + x + ", y = " + y + ", radius = " + radius);
+                draw(x, y, radius);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                x = event.getX();
+                y = event.getY();
+                radius = (float)Math.sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0));
+                Log.d("myLogs", "Moving: x = " + x + ", y = " + y + ", radius = " + radius);
+                draw(x, y, radius);
+                break;
+            default: break;
         }
-        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-            Log.e("myLogs", "moving");
+        return true;
+    }
+
+    private void draw(float x, float y, float radius) {
+        if(radius >= radiusIn && radius <= radiusExt) {
+            float cos = (scalarProduct(x, y, x0+radius, y0))/(radius*radius);
+            float degree = (float)Math.toDegrees(Math.acos(cos));
+            if(y > y0) degree = 360 - degree;
+            Log.w("myLogs", "touch: X = "+x+", Y = "+y+
+                    "; deg = "+(degree+ratio()/2)%360+", segment = "+segmentNumber(degree));
+            pressedSegmentNumber = segmentNumber(degree);
+            shouldDrawSector = true;
+            invalidate();
         }
-        return super.onTouchEvent(event);
     }
 
     private int segmentNumber(float degree) {
@@ -151,11 +164,11 @@ public class RingSelector extends View {
     }
 
     private int numberNext(int number) {
-        return ((number+3))%60;
+        return ((number+4))%60;
     }
 
     private int numberPrev(int number) {
-        int result = ((number-3))%60;
+        int result = ((number-4))%60;
         if(result < 0) result += 60;
         return result;
     }
@@ -165,7 +178,7 @@ public class RingSelector extends View {
 
         int numberNext = numberNext(SEGMENTS_COUNT-pressedSegmentNumber);
         int numberPrev = numberPrev(SEGMENTS_COUNT-pressedSegmentNumber);
-        if(Math.abs(numberNext-numberPrev)>6)
+        if(Math.abs(numberNext-numberPrev)>8)
             if(numberNext>numberPrev) numberNext = (60 - numberNext)*-1;
             else numberPrev = (60 - numberPrev)*-1;
         float degreeFrom = numberPrev*ratio();
